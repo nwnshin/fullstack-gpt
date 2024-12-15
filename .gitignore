@@ -2,3 +2,4 @@
 notebook.ipynb
 prompt.json
 prompt.yaml
+.cache/
