@@ -3,3 +3,6 @@ notebook.ipynb
 prompt.json
 prompt.yaml
 .cache/
+.streamlit
+.streamlit/
+files
