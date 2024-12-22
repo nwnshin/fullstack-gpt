@@ -9,7 +9,8 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.storage import LocalFileStore
-from langchain.schema.runnable import RunnablePassthrough
+from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
+from langchain.callbacks.base import BaseCallbackHandler
 
 st.set_page_config(
     page_title="DocumentGPT",
@@ -18,7 +19,23 @@ st.set_page_config(
 
 st.title("Document GPT")
 
-llm = ChatOpenAI( temperature=0.3, streaming=True ) 
+class CallbackHandler(BaseCallbackHandler):
+    message = ""
+    # args = arguments , kwargs = keyword arguments
+    def on_llm_start(self, *args, **kwargs):
+        self.message_box = st.empty()
+
+    def on_llm_end(self, *args, **kwargs):
+        save_message(self.message, "ai")
+        # st.sidebar.write("~") 과 동일
+        with st.sidebar:
+            st.write("llm finished.")
+
+    def on_llm_new_token(self, token, *args, **kwargs):
+        self.message += token
+        self.message_box.markdown(self.message)
+
+llm = ChatOpenAI( temperature=0.3, streaming=True, callbacks=[CallbackHandler()] ) 
 
 st.markdown("""
 Welcome!
@@ -27,8 +44,10 @@ Use this chatbot to ask questions to an AI about your files!
 You can upload your file on sidebar.
 """)
 
-# 함수 embed_file은 file이라는 변수를 받고, retriever을 반환함
+# 함수가 처음 실행될 대 로딩표시 스피너 출력 
+# 한번 실행 후 결과를 캐시에 저장하여 또 호출할 때 로딩없이 빠르게 반환함
 @st.cache_data(show_spinner="Embedding...")
+# 함수 embed_file은 file이라는 변수를 받고, retriever을 반환함
 def embed_file(file):
     file_content = file.read()
     file_path = f"./.cache/files/{file.name}"
@@ -53,16 +72,22 @@ def embed_file(file):
     retriever = vectorstore.as_retriever()
     return retriever
 
-def send_message(message, role, save=True):
-    with st.chat_message(role):
-        st.markdown(message)
-    if save:
+def save_message(message, role):
         st.session_state["messages"].append({"message": message, "role": role})
 
-def format_docs(splitted_docs):
-  return "\n\n".join(document.page_content for document in splitted_docs)
+def send_message(message, role, save=True):
+    # 채팅형태로 메세지를 화면에 출력함
+    with st.chat_message(role):
+        st.markdown(message)
+    # save=True라면 메시지 내역을 session_state[messages]에 저장함(대화 기록 저장)
+    if save:
+        save_message(message, role)
+
+def format_docs(retriever):
+  return "\n\n".join(doc.page_content for doc in retriever)
 
 def paint_history():
+    # 저장된 메세지 내역을 화면에 출력함. 이미 저장된 내용이기 때문에 save=false로 또 저장되는 것 방지.
     for message in st.session_state["messages"]:
         send_message(
             message["message"],
@@ -70,12 +95,13 @@ def paint_history():
             save=False,
         )
 
+# 대화 프롬프트 템플릿 생성
 prompt = ChatPromptTemplate.from_messages(
     [("system", "You are a helpful assistant. Answer questions using only the following context. If you don't know the answer just say you don't know, don't make it up:\n\n{document}"),
-    MessagesPlaceholder(variable_name="history"),
     ("human","{question}")]
 )
 
+# .sidebar 메소드 실행
 with st.sidebar:
   file = st.file_uploader("Upload a .txt, .pdf or .docx file", type=["pdf","txt","docx"])
   api_key = st.text_input("Enter your API Key:", type="password")
@@ -83,12 +109,24 @@ with st.sidebar:
     st.write("Your API Key is set.")
     headers = {"Authorization":f"Bearer {api_key}"}
 
+# 조건문: 파일 업로드 시 - retriever, 저장되지 않는 ai메세지, 대화 히스토리, input란 표시
 if file: 
-  retriever = embed_file(file)
+  retrieved = embed_file(file) # 파일을 embed file 함수에 변수로 입력하고 출력받은 벡터화된 서류를 retrieved로 받음
   send_message("Ready! Ask me Anything.", "ai", save=False)
   paint_history()
   message = st.chat_input("Ask anything about your file...")
+  # 조건문: 메세지 입력시 - send messages 함수 실행, retrieved된 벡터화된 내용에 메세지를 invoke하여 출력받은 list of 내용을 docs로 저장.
   if message:
     send_message(message, "human")
+    chain = { "document": retrieved | RunnableLambda(format_docs), "question": RunnablePassthrough() } | prompt | llm
+    with st.chat_message("ai"):
+        response = chain.invoke(message)
+    #send_message(response.content, "ai")
+    #docs = retrieved.invoke(message)
+    #join_docs = "\n\n".join(document.page_content for document in docs)
+    #join_docs
+    #prompt = template.format_messages(context=docs, question=message)
+    #llm.predict_messages(prompt)
+# 조건문: 파일 없을 시 - session state 초기화
 else:
   st.session_state["messages"] = []
