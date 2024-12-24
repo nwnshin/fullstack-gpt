@@ -67,8 +67,8 @@ def format_docs(retriever):
 with st.sidebar:
   docs = None
   topic = None
-  api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-  if api_key:
+  openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+  if openai_api_key:
     st.sidebar.write("Your API Key is set.")
   st.markdown("---")
 
@@ -262,7 +262,7 @@ if not docs:
     Get started by uploading a file or searching on Wikipedia in the sidebar.
   """)
 else:
-  if not api_key:
+  if not openai_api_key:
     st.error("Please enter your OpenAI API Key on the sidebar.")
   else:
   # 만약 유저가 file을 선택하면 topic은 없음. 그래서 topic if topic

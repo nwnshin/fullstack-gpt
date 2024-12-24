@@ -21,8 +21,8 @@ st.title("Document GPT")
 
 # .sidebar 메소드 실행
 with st.sidebar:
-    api_key = st.text_input("Enter your API Key:", type="password")
-    if api_key:
+    openai_api_key = st.text_input("Enter your API Key:", type="password")
+    if openai_api_key:
         st.write("Your API Key is set.")
     st.markdown("---")
 
@@ -45,7 +45,7 @@ class CallbackHandler(BaseCallbackHandler):
         self.message += token
         self.message_box.markdown(self.message)
 
-llm = ChatOpenAI( temperature=0.3, streaming=True, callbacks=[CallbackHandler()], openai_api_key=api_key ) 
+llm = ChatOpenAI( temperature=0.3, streaming=True, callbacks=[CallbackHandler()], openai_openai_api_key=openai_api_key ) 
 
 st.markdown("""
 Welcome!
@@ -73,7 +73,7 @@ def embed_file(file):
     # split
     splitted_docs = loader.load_and_split(text_splitter=splitter)
     # 임베딩모델
-    embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+    embeddings = OpenAIEmbeddings(openai_openai_api_key=openai_api_key)
     # 캐싱
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
     # 벡터화된 문서 저장
@@ -112,7 +112,7 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 def invoke():
-    if not api_key:
+    if not openai_api_key:
         return
     # 조건문: 파일 업로드 시 - retriever, 저장되지 않는 ai메세지, 대화 히스토리, input란 표시
     if file: 

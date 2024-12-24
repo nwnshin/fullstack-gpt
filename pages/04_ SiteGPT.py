@@ -29,11 +29,10 @@ def load_website(url):
   )
   # filter_urls는 list 혹은 정규식만 받음. 
   # 1. 데이터를 로드할 url의 list 2. 정규식(더 정밀한 필터링 가능, 추천)
-  # r"^(?!.*\/blog\/).*" : /blog/를 포함하는 url은 전부 제외
-  # r"^(.*\/blog\/).*" : /blog/를 포함하는 url만 포함
+  # r"^(?!.*\/blog\/).*" : /blog/를 포함하는 url은 전부 제외 
+  # r"^(.*\/blog\/).*" : /blog/를 포함하는 url만 포함 filter_urls=[r"^(.*\/blog\/).*"], # 블로그 포스트만 데이터 스크랩하기
   loader = SitemapLoader(
     url, 
-    filter_urls=[r"^(.*\/blog\/).*"], # 블로그 포스트만 데이터 스크랩하기
     parsing_funciton=parse_page
   )
   loader.request_per_second = 1 # 요청을 사이트에 보내는 속도 설정(1초에 1번). 너무 빠르면 차단 당한다.
@@ -55,8 +54,8 @@ st.markdown("""
 """)
 
 with st.sidebar:
-  api_key = st.text_input("Enter your API Key:", type="password")
-  if api_key:
+  openai_api_key = st.text_input("Enter your API Key:", type="password")
+  if openai_api_key:
     st.write("Your API Key is set.")
   url = st.text_input("URL here", placeholder="https://example.com")
 
@@ -66,8 +65,9 @@ if url:
     with st.sidebar:
       st.error("URL has to be a Sitemap URL. Please try again.")
   else:
-    loader = load_website(url)
+    retriever = load_website(url)
+    
     # 수집한 텍스트 편집하기
 else:
-  if not api_key:
+  if not openai_api_key:
     st.error("Please enter your OpenAI API Key on the sidebar.")
