@@ -19,23 +19,31 @@ st.set_page_config(
 
 st.title("Document GPT")
 
+# .sidebar 메소드 실행
+with st.sidebar:
+    api_key = st.text_input("Enter your API Key:", type="password")
+    if api_key:
+        st.write("Your API Key is set.")
+    file = st.file_uploader("Upload a .txt, .pdf or .docx file", type=["pdf","txt","docx"])
+
 class CallbackHandler(BaseCallbackHandler):
     message = ""
     # args = arguments , kwargs = keyword arguments
     def on_llm_start(self, *args, **kwargs):
         self.message_box = st.empty()
+        st.write(">> llm started... <<")
 
     def on_llm_end(self, *args, **kwargs):
         save_message(self.message, "ai")
         # st.sidebar.write("~") 과 동일
         with st.sidebar:
-            st.write("llm finished.")
+            st.write(">> llm finished. <<")
 
     def on_llm_new_token(self, token, *args, **kwargs):
         self.message += token
         self.message_box.markdown(self.message)
 
-llm = ChatOpenAI( temperature=0.3, streaming=True, callbacks=[CallbackHandler()] ) 
+llm = ChatOpenAI( temperature=0.3, streaming=True, callbacks=[CallbackHandler()], openai_api_key=api_key ) 
 
 st.markdown("""
 Welcome!
@@ -63,7 +71,7 @@ def embed_file(file):
     # split
     splitted_docs = loader.load_and_split(text_splitter=splitter)
     # 임베딩모델
-    embeddings = OpenAIEmbeddings()
+    embeddings = OpenAIEmbeddings(openai_api_key=api_key)
     # 캐싱
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
     # 벡터화된 문서 저장
@@ -100,14 +108,6 @@ prompt = ChatPromptTemplate.from_messages(
     [("system", "You are a helpful assistant. Answer questions using only the following context. If you don't know the answer just say you don't know, don't make it up:\n\n{document}"),
     ("human","{question}")]
 )
-
-# .sidebar 메소드 실행
-with st.sidebar:
-  file = st.file_uploader("Upload a .txt, .pdf or .docx file", type=["pdf","txt","docx"])
-  api_key = st.text_input("Enter your API Key:", type="password")
-  if api_key:
-    st.write("Your API Key is set.")
-    headers = {"Authorization":f"Bearer {api_key}"}
 
 # 조건문: 파일 업로드 시 - retriever, 저장되지 않는 ai메세지, 대화 히스토리, input란 표시
 if file: 
