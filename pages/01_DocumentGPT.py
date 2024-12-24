@@ -24,6 +24,8 @@ with st.sidebar:
     api_key = st.text_input("Enter your API Key:", type="password")
     if api_key:
         st.write("Your API Key is set.")
+    st.markdown("---")
+
     file = st.file_uploader("Upload a .txt, .pdf or .docx file", type=["pdf","txt","docx"])
 
 class CallbackHandler(BaseCallbackHandler):
@@ -109,24 +111,34 @@ prompt = ChatPromptTemplate.from_messages(
     ("human","{question}")]
 )
 
-# 조건문: 파일 업로드 시 - retriever, 저장되지 않는 ai메세지, 대화 히스토리, input란 표시
-if file: 
-  retrieved = embed_file(file) # 파일을 embed file 함수에 변수로 입력하고 출력받은 벡터화된 서류를 retrieved로 받음
-  send_message("Ready! Ask me Anything.", "ai", save=False)
-  paint_history()
-  message = st.chat_input("Ask anything about your file...")
-  # 조건문: 메세지 입력시 - send messages 함수 실행, retrieved된 벡터화된 내용에 메세지를 invoke하여 출력받은 list of 내용을 docs로 저장.
-  if message:
-    send_message(message, "human")
-    chain = { "document": retrieved | RunnableLambda(format_docs), "question": RunnablePassthrough() } | prompt | llm
-    with st.chat_message("ai"):
-        response = chain.invoke(message)
-    #send_message(response.content, "ai")
-    #docs = retrieved.invoke(message)
-    #join_docs = "\n\n".join(document.page_content for document in docs)
-    #join_docs
-    #prompt = template.format_messages(context=docs, question=message)
-    #llm.predict_messages(prompt)
-# 조건문: 파일 없을 시 - session state 초기화
-else:
-  st.session_state["messages"] = []
+def invoke():
+    if not api_key:
+        return
+    # 조건문: 파일 업로드 시 - retriever, 저장되지 않는 ai메세지, 대화 히스토리, input란 표시
+    if file: 
+        retrieved = embed_file(file) # 파일을 embed file 함수에 변수로 입력하고 출력받은 벡터화된 서류를 retrieved로 받음
+        send_message("Ready! Ask me Anything.", "ai", save=False)
+        paint_history()
+        message = st.chat_input("Ask anything about your file...")
+        # 조건문: 메세지 입력시 - send messages 함수 실행, retrieved된 벡터화된 내용에 메세지를 invoke하여 출력받은 list of 내용을 docs로 저장.
+    if message:
+        send_message(message, "human")
+        chain = { "document": retrieved | RunnableLambda(format_docs), "question": RunnablePassthrough() } | prompt | llm
+        with st.chat_message("ai"):
+            response = chain.invoke(message)
+        #send_message(response.content, "ai")
+        #docs = retrieved.invoke(message)
+        #join_docs = "\n\n".join(document.page_content for document in docs)
+        #join_docs
+        #prompt = template.format_messages(context=docs, question=message)
+        #llm.predict_messages(prompt)
+    # 조건문: 파일 없을 시 - session state 초기화
+    else:
+        st.session_state["messages"] = []
+        return
+
+try: 
+    main()
+except Exception as e:
+    st.error("Check your OpenAI API Key or File")
+    e

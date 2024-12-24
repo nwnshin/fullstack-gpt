@@ -5,6 +5,9 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.document_loaders import SitemapLoader # sitemaploader는 내부적으로 beautifulsoup을 사용해서 내용 편집을 함. 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_transformers import Html2TextTransformer # html을 받아서 text로 변환해줌
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
+
 
 # 스크래핑한 데이터 편집하기
 # beautiful soup object(html 덩어리)를 입력받음
@@ -35,7 +38,12 @@ def load_website(url):
   )
   loader.request_per_second = 1 # 요청을 사이트에 보내는 속도 설정(1초에 1번). 너무 빠르면 차단 당한다.
   docs = loader.load_and_split(text_splitter=splitter) # 위에서  만든 splitter를 textsplitter로 사용
-  return docs
+  vector_store = FAISS.from_documents(docs, OpenAIEmbeddings())
+  return vector_store.as_retriever()
+
+llm = ChatOpenAI(temperature=0.5, streaming=True)
+
+html2text_transformer = Html2TextTransformer()
 
 st.set_page_config(
   page_title="SiteGPT",
@@ -45,10 +53,6 @@ st.markdown("""
   #### Ask questions about the content of a website. 
   Start by writing the URL of the website on the sidebar. 
 """)
-
-llm = ChatOpenAI(temperature=0.5, streaming=True)
-
-html2text_transformer = Html2TextTransformer()
 
 with st.sidebar:
   api_key = st.text_input("Enter your API Key:", type="password")
@@ -64,4 +68,6 @@ if url:
   else:
     loader = load_website(url)
     # 수집한 텍스트 편집하기
-    # 
+else:
+  if not api_key:
+    st.error("Please enter your OpenAI API Key on the sidebar.")

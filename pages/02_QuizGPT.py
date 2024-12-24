@@ -66,9 +66,11 @@ def format_docs(retriever):
 # 사이드바 - apikey 입력, 난이도 조절, 파일 업로더or위키피디아 문서 검색
 with st.sidebar:
   docs = None
+  topic = None
   api_key = st.text_input("Enter your OpenAI API Key:", type="password")
   if api_key:
     st.sidebar.write("Your API Key is set.")
+  st.markdown("---")
 
   difficulty = st.selectbox(
     "Select Quiz Difficulty",
@@ -260,17 +262,20 @@ if not docs:
     Get started by uploading a file or searching on Wikipedia in the sidebar.
   """)
 else:
+  if not api_key:
+    st.error("Please enter your OpenAI API Key on the sidebar.")
+  else:
   # 만약 유저가 file을 선택하면 topic은 없음. 그래서 topic if topic
-  response = run_quiz_chain(docs, topic if topic else file.name)
-  with st.form("questions_form"):
-    for question in response["questions"]:
-      st.write(question["question"])
-      value = st.radio("Select an option.",
-        [answer["answer"] for answer in question["answers"]],
-        index=None)
-      if {"answer":value, "correct": True} in question["answers"]:
-        st.success("Correct!")
-      elif value is not None:
-        st.error("Wrong, try again.")
-    button = st.form_submit_button() 
-    # .form 위젯은 submit button이 필수적. 선택 후 submit버튼이 클릭되야 파일이 rerun하고 바뀐 부분이 인식되어 새 데이터를 갖게 됨.
+    response = run_quiz_chain(docs, topic if topic else file.name)
+    with st.form("questions_form"):
+      for question in response["questions"]:
+        st.write(question["question"])
+        value = st.radio("Select an option.",
+          [answer["answer"] for answer in question["answers"]],
+          index=None)
+        if {"answer":value, "correct": True} in question["answers"]:
+          st.success("Correct!")
+        elif value is not None:
+          st.error("Wrong, try again.")
+      button = st.form_submit_button() 
+      # .form 위젯은 submit button이 필수적. 선택 후 submit버튼이 클릭되야 파일이 rerun하고 바뀐 부분이 인식되어 새 데이터를 갖게 됨.
