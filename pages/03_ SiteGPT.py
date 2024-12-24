@@ -40,10 +40,6 @@ def load_website(url):
   vector_store = FAISS.from_documents(docs, OpenAIEmbeddings())
   return vector_store.as_retriever()
 
-llm = ChatOpenAI(temperature=0.5, streaming=True)
-
-html2text_transformer = Html2TextTransformer()
-
 st.set_page_config(
   page_title="SiteGPT",
 )
@@ -54,10 +50,16 @@ st.markdown("""
 """)
 
 with st.sidebar:
-  openai_api_key = st.text_input("Enter your API Key:", type="password")
+  openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
   if openai_api_key:
-    st.write("Your API Key is set.")
+    st.sidebar.write("Your API Key is set.")
+  st.markdown("---")
+  
   url = st.text_input("URL here", placeholder="https://example.com")
+
+llm = ChatOpenAI(temperature=0.5, streaming=True)
+
+html2text_transformer = Html2TextTransformer()
 
 if url:
   # sitemaploader사용. url에 xml sitemap이 포함되어 잇는지 확인하는 로직
