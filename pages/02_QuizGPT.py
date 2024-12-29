@@ -67,8 +67,8 @@ def format_docs(retriever):
 with st.sidebar:
   docs = None
   topic = None
-  openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-  if openai_api_key:
+  api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+  if api_key:
     st.sidebar.write("Your API Key is set.")
   st.markdown("---")
 
@@ -98,7 +98,7 @@ with st.sidebar:
 
 
 
-llm = ChatOpenAI(streaming=True, temperature=0.3, model="gpt-4o-mini", callbacks=[StreamingStdOutCallbackHandler()])
+llm = ChatOpenAI(streaming=True, temperature=0.3, model="gpt-4o-mini", callbacks=[StreamingStdOutCallbackHandler()], openai_api_key=api_key)
 
 # 프롬프트를 통해 LLM에 예시 제공
 question_prompt = ChatPromptTemplate.from_messages([
@@ -262,8 +262,8 @@ if not docs:
     Get started by uploading a file or searching on Wikipedia in the sidebar.
   """)
 else:
-  if not openai_api_key:
-    st.error("Please enter your OpenAI API Key on the sidebar.")
+  if not api_key:
+    st.sidebar.error("Please enter your OpenAI API Key to proceed")
   else:
   # 만약 유저가 file을 선택하면 topic은 없음. 그래서 topic if topic
     response = run_quiz_chain(docs, topic if topic else file.name)

@@ -21,9 +21,11 @@ st.title("Document GPT")
 
 # .sidebar 메소드 실행
 with st.sidebar:
-    openai_api_key = st.text_input("Enter your API Key:", type="password")
-    if openai_api_key:
+    api_key = st.text_input("Enter your API Key:", type="password")
+    if api_key:
         st.write("Your API Key is set.")
+    else:
+        st.error("Please enter your OpenAI API Key to proceed.")
     st.markdown("---")
 
     file = st.file_uploader("Upload a .txt, .pdf or .docx file", type=["pdf","txt","docx"])
@@ -45,7 +47,7 @@ class CallbackHandler(BaseCallbackHandler):
         self.message += token
         self.message_box.markdown(self.message)
 
-llm = ChatOpenAI( temperature=0.3, streaming=True, callbacks=[CallbackHandler()], openai_openai_api_key=openai_api_key ) 
+llm = ChatOpenAI( temperature=0.3, streaming=True, callbacks=[CallbackHandler()], openai_api_key=api_key ) 
 
 st.markdown("""
 Welcome!
@@ -136,9 +138,3 @@ def invoke():
     else:
         st.session_state["messages"] = []
         return
-
-try: 
-    main()
-except Exception as e:
-    st.error("Check your OpenAI API Key or File")
-    e

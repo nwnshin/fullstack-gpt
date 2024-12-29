@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import chardet
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.document_loaders import SitemapLoader # sitemaploader는 내부적으로 beautifulsoup을 사용해서 내용 편집을 함. 
@@ -7,7 +8,11 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_transformers import Html2TextTransformer # html을 받아서 text로 변환해줌
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.schema.runnable import RunnablePassthrough
 
+llm = ChatOpenAI(temperature=0.5, streaming=True, openai_api_key=api_key)
+
+html2text_transformer = Html2TextTransformer()
 
 # 스크래핑한 데이터 편집하기
 # beautiful soup object(html 덩어리)를 입력받음
@@ -33,12 +38,20 @@ def load_website(url):
   # r"^(.*\/blog\/).*" : /blog/를 포함하는 url만 포함 filter_urls=[r"^(.*\/blog\/).*"], # 블로그 포스트만 데이터 스크랩하기
   loader = SitemapLoader(
     url, 
-    parsing_funciton=parse_page
+    parsing_function=parse_page
   )
   loader.request_per_second = 1 # 요청을 사이트에 보내는 속도 설정(1초에 1번). 너무 빠르면 차단 당한다.
   docs = loader.load_and_split(text_splitter=splitter) # 위에서  만든 splitter를 textsplitter로 사용
   vector_store = FAISS.from_documents(docs, OpenAIEmbeddings())
   return vector_store.as_retriever()
+
+def encode_data(data):
+  return
+
+def get_answers(inputs):
+  docs = inputs["docs"]
+  question = inputs["question"]
+  answers_chain = answers_prompt | llm
 
 st.set_page_config(
   page_title="SiteGPT",
@@ -50,16 +63,12 @@ st.markdown("""
 """)
 
 with st.sidebar:
-  openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-  if openai_api_key:
+  api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+  if api_key:
     st.sidebar.write("Your API Key is set.")
   st.markdown("---")
   
-  url = st.text_input("URL here", placeholder="https://example.com")
-
-llm = ChatOpenAI(temperature=0.5, streaming=True)
-
-html2text_transformer = Html2TextTransformer()
+  url = st.text_input("URL here", placeholder="https://example.com/sitemap.xml")
 
 if url:
   # sitemaploader사용. url에 xml sitemap이 포함되어 잇는지 확인하는 로직
@@ -69,7 +78,10 @@ if url:
   else:
     retriever = load_website(url)
     
+    # 체인 총 2개: 1개는 개별 docs에 대한 답변 생성과 채점, 나머지는 우리가 모든 답변을 받은 상태에 점수가 제일 높고 가장 최신인 답변으로 고르기
+    # 체인1의 input: 검색기에 저장된 docs, 유저의 question
+    chian = { "docs":retriever, "question": RunnablePassthrough() } | prompt | llm
     # 수집한 텍스트 편집하기
 else:
-  if not openai_api_key:
-    st.error("Please enter your OpenAI API Key on the sidebar.")
+  if not api_key:
+    st.sidebar.error("Please enter your OpenAI API Key to proceed")
